@@ -771,7 +771,7 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
       mLastLoadFailed = false;
 
       RNCWebView reactWebView = (RNCWebView) webView;
-      reactWebView.callInjectedJavaScriptBeforeContentLoaded();       
+      reactWebView.callInjectedJavaScriptBeforeContentLoaded();
 
       dispatchEvent(
         webView,
@@ -1084,7 +1084,6 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
      */
     protected boolean injectedJavaScriptForMainFrameOnly = true;
     protected boolean injectedJavaScriptBeforeContentLoadedForMainFrameOnly = true;
-
     protected boolean messagingEnabled = false;
     protected @Nullable
     String messagingModuleName;
@@ -1242,6 +1241,7 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
         injectedJS != null &&
         !TextUtils.isEmpty(injectedJS)) {
         evaluateJavascriptWithFallback("(function() {\n" + injectedJS + ";\n})();");
+        //evaluateJavascriptWithFallback(injectedJS);
       }
     }
 

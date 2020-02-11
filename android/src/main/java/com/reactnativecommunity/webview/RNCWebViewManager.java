@@ -392,6 +392,11 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
     ((RNCWebView) view).setInjectedJavaScript(injectedJavaScript);
   }
 
+   @ReactProp(name = "injectedJavaScriptBeforeContentLoaded")
+   public void setInjectedJavaScriptBeforeContentLoaded(WebView view, @Nullable String injectedJavaScriptBeforeContentLoaded) {
+     ((RNCWebView) view).setInjectedJavaScriptBeforeContentLoaded(injectedJavaScriptBeforeContentLoaded);
+   }
+
   @ReactProp(name = "messagingEnabled")
   public void setMessagingEnabled(WebView view, boolean enabled) {
     ((RNCWebView) view).setMessagingEnabled(enabled);
@@ -733,6 +738,9 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
       super.onPageStarted(webView, url, favicon);
       mLastLoadFailed = false;
 
+      RNCWebView reactWebView = (RNCWebView) webView;
+      reactWebView.callInjectedJavaScriptBeforeContentLoaded();
+
       dispatchEvent(
         webView,
         new TopLoadingStartEvent(
@@ -971,6 +979,8 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
   protected static class RNCWebView extends WebView implements LifecycleEventListener {
     protected @Nullable
     String injectedJS;
+    protected @Nullable
+    String injectedJSBeforeContentLoaded;
     protected boolean messagingEnabled = false;
     protected @Nullable
     RNCWebViewClient mRNCWebViewClient;
@@ -1044,6 +1054,10 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
       injectedJS = js;
     }
 
+    public void setInjectedJavaScriptBeforeContentLoaded(@Nullable String js) {
+       injectedJSBeforeContentLoaded = js;
+    }
+
     protected RNCWebViewBridge createRNCWebViewBridge(RNCWebView webView) {
       return new RNCWebViewBridge(webView);
     }
@@ -1082,8 +1096,18 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
         injectedJS != null &&
         !TextUtils.isEmpty(injectedJS)) {
         evaluateJavascriptWithFallback("(function() {\n" + injectedJS + ";\n})();");
+        //evaluateJavascriptWithFallback(injectedJS);
       }
     }
+
+    public void callInjectedJavaScriptBeforeContentLoaded() {
+       if (getSettings().getJavaScriptEnabled() &&
+       injectedJSBeforeContentLoaded != null &&
+       !TextUtils.isEmpty(injectedJSBeforeContentLoaded)) {
+         evaluateJavascriptWithFallback("(function() {\n" + injectedJSBeforeContentLoaded + ";\n})();");
+         //evaluateJavascriptWithFallback(injectedJSBeforeContentLoaded);
+       }
+     }
 
     public void onMessage(String message) {
       if (mRNCWebViewClient != null) {

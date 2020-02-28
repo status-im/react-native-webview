@@ -8,7 +8,7 @@
     "Thibault Malbranche <malbranche.thibault@gmail.com>"
   ],
   "license": "MIT",
-  "version": "8.0.6",
+  "version": "8.0.7",
   "homepage": "https://github.com/react-native-community/react-native-webview#readme",
   "scripts": {
     "start": "node node_modules/react-native/local-cli/cli.js start",
@@ -19,6 +19,7 @@
     "lint": "yarn tsc --noEmit && yarn eslint ./src --ext .ts,.tsx",
     "build": "yarn tsc",
     "prepare": "yarn build",
+    "postinstall": "yarn build",
     "test": "yarn jest"
   },
   "rn-docs": {

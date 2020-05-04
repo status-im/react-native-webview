@@ -53,7 +53,7 @@ android/gradle
 android/gradlew
 android/gradlew.bat
 
-lib/
+#lib/
 .classpath
 .project
 .settings/

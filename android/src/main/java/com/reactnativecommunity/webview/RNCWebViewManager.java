@@ -12,6 +12,7 @@ import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
+import okhttp3.HttpUrl;
 import okhttp3.Response;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -295,10 +296,7 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
   }
 
   private Boolean urlStringLooksInvalid(String urlString) {
-      return urlString == null ||
-             urlString.trim().equals("") ||
-             !(urlString.startsWith("http") && !urlString.startsWith("www")) ||
-             urlString.contains("|");
+    return urlString == null || HttpUrl.parse(urlString) == null;
   }
 
   private Boolean responseRequiresJSInjection(Response response) {
@@ -315,57 +313,71 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
 
 
   public WebResourceResponse shouldInterceptRequest(WebResourceRequest request, Boolean onlyMainFrame, RNCWebView webView) {
-        Uri url = request.getUrl();
-        String urlStr = url.toString();
+      Uri url = request.getUrl();
+      String urlStr = url.toString();
 
-        Log.i("StatusNativeLogs", "###shouldInterceptRequest 1");
-        Log.d(REACT_CLASS, "new request ");
-        Log.d(REACT_CLASS, "url " + urlStr);
-        Log.d(REACT_CLASS, "host " + request.getUrl().getHost());
-        Log.d(REACT_CLASS, "path " + request.getUrl().getPath());
-        Log.d(REACT_CLASS, "main " + request.isForMainFrame());
-        Log.d(REACT_CLASS, "headers " + request.getRequestHeaders().toString());
-        Log.d(REACT_CLASS, "method " + request.getMethod());
+      Log.d(REACT_CLASS, "new request ");
+      Log.d(REACT_CLASS, "url " + urlStr);
+      Log.d(REACT_CLASS, "host " + request.getUrl().getHost());
+      Log.d(REACT_CLASS, "path " + request.getUrl().getPath());
+      Log.d(REACT_CLASS, "main " + request.isForMainFrame());
+      Log.d(REACT_CLASS, "headers " + request.getRequestHeaders().toString());
+      Log.d(REACT_CLASS, "method " + request.getMethod());
 
-        Log.i("StatusNativeLogs", "###shouldInterceptRequest 2");
-         if (onlyMainFrame && !request.isForMainFrame() || 
-             urlStringLooksInvalid(urlStr)) {
-            return null;//super.shouldInterceptRequest(webView, request);
-        }
+       if (onlyMainFrame && !request.isForMainFrame() || 
+           urlStringLooksInvalid(urlStr)) {
+          return null;//super.shouldInterceptRequest(webView, request);
+      }
 
-        Log.i("StatusNativeLogs", "###shouldInterceptRequest 3");
-        try {
-            Log.i("StatusNativeLogs", "###shouldInterceptRequest 4");
-            Request req = new Request.Builder()
-                    .url(urlStr)
-                    .header("User-Agent", userAgent)
-                    .build();
+      Response response = null;
+      try {
+          Request.Builder reqBuilder = new Request.Builder().url(urlStr);
 
-            Log.i("StatusNativeLogs", "### httpCall " + new Boolean(httpClient != null).toString());
-            Response response = httpClient.newCall(req).execute();
+          Map<String, String> requestHeaders = request.getRequestHeaders();
+          for(String header: requestHeaders.keySet()) {	
+             reqBuilder.header(header, requestHeaders.get(header));
+          }
 
-            Log.d(REACT_CLASS, "response headers " + response.headers().toString());
-            Log.d(REACT_CLASS, "response code " + response.code());
-            Log.d(REACT_CLASS, "response suc " + response.isSuccessful());
+          Request httpRequest = reqBuilder.build();
+          response = httpClient.newCall(httpRequest).execute();
 
-            if (!responseRequiresJSInjection(response)) {
-              return null;
-            }
 
-            InputStream is = response.body().byteStream();
-            MediaType contentType = response.body().contentType();
-            Charset charset = contentType != null ? contentType.charset(UTF_8) : UTF_8;
+      } catch (Exception e) {
+          Log.w(REACT_CLASS, "Error executing URL, ignoring: " + urlStr);
+          return null;
+      }
 
-            RNCWebView reactWebView = (RNCWebView) webView;
-            if (response.code() == HttpURLConnection.HTTP_OK) {
-                is = new InputStreamWithInjectedJS(is, reactWebView.injectedJSBeforeContentLoaded, charset);
-            }
+      if (response == null) {
+          Log.w(REACT_CLASS, "Unexpected null response, ignore: " + urlStr);
+      }
 
-            Log.d(REACT_CLASS, "inject our custom JS to this request");
-            return new WebResourceResponse("text/html", charset.name(), is);
-        } catch (IOException e) {
-            return null;
-        }
+      Log.d(REACT_CLASS, "response headers " + response.headers().toString());
+      Log.d(REACT_CLASS, "response code " + response.code());
+      Log.d(REACT_CLASS, "response suc " + response.isSuccessful());
+      if (!responseRequiresJSInjection(response)) {
+          return null;
+      }
+
+      InputStream is = response.body().byteStream();
+      MediaType contentType = response.body().contentType();
+      Charset charset = contentType != null ? contentType.charset(UTF_8) : UTF_8;
+
+      RNCWebView reactWebView = (RNCWebView) webView;
+      if (response.code() == HttpURLConnection.HTTP_OK ||
+          response.headers().get("content-type").toLowerCase().equals(HTML_MIME_TYPE)) {
+          is = new InputStreamWithInjectedJS(is, reactWebView.injectedJSBeforeContentLoaded, charset);
+      }
+
+      Log.d(REACT_CLASS, "inject our custom JS to this request");
+      Map<String, String> responseHeaders = new HashMap<>();
+      for (String hname: response.headers().names()) {
+          Log.d(REACT_CLASS, "HEAD " + hname + " " + response.headers().get(hname));
+          responseHeaders.put(hname, response.headers().get(hname));
+      }
+
+      return new WebResourceResponse("text/html", charset.name(), response.code(), "phrase", responseHeaders, is);
+
+
   }
 
   @ReactProp(name = "javaScriptEnabled")
@@ -874,11 +886,18 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
     private InputStream pageIS;
     private InputStream scriptIS;
     private Charset charset;
-    private static final String REACT_CLASS = "InputStreamWithInjectedJS";
+    private static final String REACT_CLASS = "InpStreamWithInjectedJS";
     private static Map<Charset, String> script = new HashMap<>();
+    private int GREATER_THAN_SIGN = 62;
+    private int LESS_THAN_SIGN = 60;
+    private int SCRIPT_TAG_LENGTH = 7;
 
     private boolean hasJS = false;
-    private boolean headWasFound = false;
+    private boolean tagWasFound = false;
+    private int[] tag = new int[SCRIPT_TAG_LENGTH];
+    private boolean readFromTagVector = false;
+    private int tagVectorIdx = 0;
+    private int maxTagVectorIdx = SCRIPT_TAG_LENGTH;
     private boolean scriptWasInjected = false;
     private StringBuffer contentBuffer = new StringBuffer();
 
@@ -919,38 +938,118 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
         }
     }
 
-    @Override
-    public int read() throws IOException {
-        if (scriptWasInjected || !hasJS) {
-            return pageIS.read();
+    private int readScript() throws IOException {
+        int nextByte = scriptIS.read();
+        if (nextByte == -1) {
+            scriptIS.close();
+            scriptWasInjected = true;
+            if(readFromTagVector) {
+                return readTag();
+            } else {
+                return pageIS.read();
+            }
+        } else {
+            return nextByte;
+        }
+    }
+
+    private int readTag() {
+        int nextByte = tag[tagVectorIdx];
+        tagVectorIdx++;
+        if(tagVectorIdx > maxTagVectorIdx) {
+            readFromTagVector = false;
         }
 
-        if (!scriptWasInjected && headWasFound) {
-            int nextByte = scriptIS.read();
-            if (nextByte == -1) {
-                scriptIS.close();
-                scriptWasInjected = true;
-                return pageIS.read();
+        return nextByte;
+    }
+
+    private boolean checkHeadTag(int nextByte) {
+        int bufferLength = contentBuffer.length();
+        if (nextByte == GREATER_THAN_SIGN &&
+                bufferLength >= 6 &&
+                contentBuffer.substring(bufferLength - 6).equals("<head>")) {
+
+            Log.d(REACT_CLASS, "<head> tag was found");
+            this.scriptIS = getScript(this.charset);
+            tagWasFound = true;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean checkScriptTagByByte(int index, int anotherByte) {
+        if(index == 1) {
+            // 115 = "s"
+            return anotherByte == 115;
+        } else if(index == 2) {
+            // 99 = "c"
+            return anotherByte == 99;
+        }
+
+        return true;
+    }
+
+    private boolean checkScriptTag(int nextByte) throws IOException {
+        if (nextByte == LESS_THAN_SIGN) {
+            StringBuilder tagBuffer = new StringBuilder();
+            tag[0] = nextByte;
+            tagBuffer.append((char) nextByte);
+            readFromTagVector = true;
+            tagVectorIdx = 1;
+            maxTagVectorIdx = SCRIPT_TAG_LENGTH - 1;
+            for (int i = 1; i < SCRIPT_TAG_LENGTH; i++) {
+                int anotherByte = pageIS.read();
+                tag[i] = anotherByte;
+                tagBuffer.append((char) anotherByte);
+                contentBuffer.append((char) anotherByte);
+                if (!checkScriptTagByByte(i, anotherByte) || anotherByte == -1) {
+                    maxTagVectorIdx = i;
+                    return false;
+                }
+            }
+
+            if(tagBuffer.length() == SCRIPT_TAG_LENGTH) {
+                String sub = tagBuffer.substring(0, SCRIPT_TAG_LENGTH);
+                if (sub.equals("<script")) {
+                    tagVectorIdx = 0;
+                    Log.d(REACT_CLASS, "<script tag was found");
+                    this.scriptIS = getScript(this.charset);
+                    tagWasFound = true;
+
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public int read() throws IOException {
+        if ((scriptWasInjected || !hasJS) && !readFromTagVector) {
+            return pageIS.read();
+        } else if (!scriptWasInjected && tagWasFound) {
+            return readScript();
+        } else if (readFromTagVector) {
+            return readTag();
+        } else {
+            int nextByte = pageIS.read();
+            contentBuffer.append((char) nextByte);
+
+            if (checkHeadTag(nextByte)) {
+                return nextByte;
+            } else if (checkScriptTag(nextByte)) {
+                return scriptIS.read();
             } else {
                 return nextByte;
             }
         }
-
-        if (!headWasFound) {
-            int nextByte = pageIS.read();
-            contentBuffer.append((char) nextByte);
-            int bufferLength = contentBuffer.length();
-            if (nextByte == 62 && bufferLength >= 6) {
-                if (contentBuffer.substring(bufferLength - 6).equals("<head>")) {
-                    this.scriptIS = getScript(this.charset);
-                    headWasFound = true;
-                }
-            }
-
-            return nextByte;
-        }
-
-        return pageIS.read();
     }
 
   }

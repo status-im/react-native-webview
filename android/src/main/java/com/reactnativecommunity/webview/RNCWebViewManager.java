@@ -19,7 +19,6 @@ import org.json.JSONObject;
 import java.net.HttpURLConnection;
 
 
-import static okhttp3.internal.Util.UTF_8;
 
 
 import android.util.Log;
@@ -359,7 +358,7 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
 
       InputStream is = response.body().byteStream();
       MediaType contentType = response.body().contentType();
-      Charset charset = contentType != null ? contentType.charset(UTF_8) : UTF_8;
+      Charset charset = contentType != null ? contentType.charset(StandardCharsets.UTF_8) : StandardCharsets.UTF_8;
 
       RNCWebView reactWebView = (RNCWebView) webView;
       if (response.code() == HttpURLConnection.HTTP_OK ||

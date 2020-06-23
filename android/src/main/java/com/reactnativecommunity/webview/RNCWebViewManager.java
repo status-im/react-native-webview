@@ -18,8 +18,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import java.net.HttpURLConnection;
 
-import com.facebook.react.modules.network.OkHttpClientProvider;
-
 import static okhttp3.internal.Util.UTF_8;
 
 
@@ -169,7 +167,7 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
   protected @Nullable String mUserAgentWithApplicationName = null;
   protected static String userAgent;
 
-  protected static OkHttpClient httpClient;
+  protected static OkHttpClient httpClient = null;
 
   public RNCWebViewManager() {
     mWebViewConfig = new WebViewConfig() {
@@ -178,7 +176,7 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
     };
 
 
-    httpClient = OkHttpClientProvider.getOkHttpClient();
+
   }
 
   public RNCWebViewManager(WebViewConfig webViewConfig) {
@@ -329,6 +327,14 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
       Response response = null;
       try {
           Request.Builder reqBuilder = new Request.Builder().url(urlStr);
+          if (httpClient == null) {
+            httpClient = new Builder()
+              .followRedirects(false)
+              .followSslRedirects(false)
+              .build();
+          }
+
+
 
           Map<String, String> requestHeaders = request.getRequestHeaders();
           for(String header: requestHeaders.keySet()) {	

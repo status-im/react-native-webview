@@ -1,7 +1,7 @@
 import { ReactElement, Component } from 'react';
 import { NativeSyntheticEvent, ViewProps, StyleProp, ViewStyle, NativeMethodsMixin, Constructor, UIManagerStatic, NativeScrollEvent } from 'react-native';
 declare type WebViewCommands = 'goForward' | 'goBack' | 'reload' | 'stopLoading' | 'postMessage' | 'injectJavaScript' | 'loadUrl' | 'requestFocus';
-declare type AndroidWebViewCommands = 'clearHistory' | 'clearCache' | 'clearFormData';
+declare type AndroidWebViewCommands = 'clearHistory' | 'clearCache' | 'clearFormData' | 'answerPermissionRequest';
 interface RNCWebViewUIManager<Commands extends string> extends UIManagerStatic {
     getViewManagerConfig: (name: string) => {
         Commands: {
@@ -63,6 +63,9 @@ export interface WebViewNativeEvent {
 export interface WebViewNativeProgressEvent extends WebViewNativeEvent {
     progress: number;
 }
+export interface WebViewNativePermissionEvent extends WebViewNativeEvent {
+    resources: string[];
+}
 export interface WebViewNavigation extends WebViewNativeEvent {
     navigationType: 'click' | 'formsubmit' | 'backforward' | 'reload' | 'formresubmit' | 'other';
     mainDocumentURL?: string;
@@ -88,6 +91,7 @@ export interface WebViewHttpError extends WebViewNativeEvent {
 }
 export declare type WebViewEvent = NativeSyntheticEvent<WebViewNativeEvent>;
 export declare type WebViewProgressEvent = NativeSyntheticEvent<WebViewNativeProgressEvent>;
+export declare type WebViewPermissionEvent = NativeSyntheticEvent<WebViewNativePermissionEvent>;
 export declare type WebViewNavigationEvent = NativeSyntheticEvent<WebViewNavigation>;
 export declare type FileDownloadEvent = NativeSyntheticEvent<FileDownload>;
 export declare type WebViewMessageEvent = NativeSyntheticEvent<WebViewMessage>;
@@ -187,6 +191,7 @@ export interface AndroidNativeWebViewProps extends CommonNativeWebViewProps {
     javaScriptEnabled?: boolean;
     mixedContentMode?: 'never' | 'always' | 'compatibility';
     onContentSizeChange?: (event: WebViewEvent) => void;
+    onPermissionRequest?: (event: WebViewPermissionEvent) => void;
     overScrollMode?: OverScrollModeType;
     saveFormDataDisabled?: boolean;
     textZoom?: number;
@@ -552,6 +557,7 @@ export interface MacOSWebViewProps extends WebViewSharedProps {
 export interface AndroidWebViewProps extends WebViewSharedProps {
     onNavigationStateChange?: (event: WebViewNavigation) => void;
     onContentSizeChange?: (event: WebViewEvent) => void;
+    onPermissionRequest?: (event: WebViewPermissionEvent) => void;
     /**
      * https://developer.android.com/reference/android/webkit/WebSettings.html#setCacheMode(int)
      * Set the cacheMode. Possible values are:

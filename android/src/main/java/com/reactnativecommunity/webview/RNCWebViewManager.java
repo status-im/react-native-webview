@@ -18,7 +18,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import java.net.HttpURLConnection;
 
-
 import static okhttp3.internal.Util.UTF_8;
 
 
@@ -168,7 +167,7 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
   protected @Nullable String mUserAgentWithApplicationName = null;
   protected static String userAgent;
 
-  protected static OkHttpClient httpClient;
+  protected static OkHttpClient httpClient = null;
 
   public RNCWebViewManager() {
     mWebViewConfig = new WebViewConfig() {
@@ -177,10 +176,6 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
     };
 
 
-    httpClient = new Builder()
-      .followRedirects(false)
-      .followSslRedirects(false)
-      .build();
 
   }
 
@@ -332,6 +327,13 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
       Response response = null;
       try {
           Request.Builder reqBuilder = new Request.Builder().url(urlStr);
+          if (httpClient == null) {
+            httpClient = new Builder()
+              .followRedirects(false)
+              .followSslRedirects(false)
+              .build();
+          }
+
 
           Map<String, String> requestHeaders = request.getRequestHeaders();
           for(String header: requestHeaders.keySet()) {	
@@ -544,389 +546,25 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
     ((RNCWebView) view).setInjectedJavaScript(injectedJavaScript);
   }
 
-   @ReactProp(name = "injectedJavaScriptBeforeContentLoaded")
-   public void setInjectedJavaScriptBeforeContentLoaded(WebView view, @Nullable String injectedJavaScriptBeforeContentLoaded) {
-     ((RNCWebView) view).setInjectedJavaScriptBeforeContentLoaded(injectedJavaScriptBeforeContentLoaded);
-   }
+  @ReactProp(name = "injectedJavaScriptBeforeContentLoaded")
+  public void setInjectedJavaScriptBeforeContentLoaded(WebView view, @Nullable String injectedJavaScriptBeforeContentLoaded) {
+    ((RNCWebView) view).setInjectedJavaScriptBeforeContentLoaded(injectedJavaScriptBeforeContentLoaded);
+  }
+
+  @ReactProp(name = "injectedJavaScriptForMainFrameOnly")
+  public void setInjectedJavaScriptForMainFrameOnly(WebView view, boolean enabled) {
+    ((RNCWebView) view).setInjectedJavaScriptForMainFrameOnly(enabled);
+  }
+
+  @ReactProp(name = "injectedJavaScriptBeforeContentLoadedForMainFrameOnly")
+  public void setInjectedJavaScriptBeforeContentLoadedForMainFrameOnly(WebView view, boolean enabled) {
+    ((RNCWebView) view).setInjectedJavaScriptBeforeContentLoadedForMainFrameOnly(enabled);
+  }
 
   @ReactProp(name = "messagingEnabled")
   public void setMessagingEnabled(WebView view, boolean enabled) {
     ((RNCWebView) view).setMessagingEnabled(enabled);
   }
-
-  @ReactProp(name = "messagingModuleName")
-  public void setMessagingModuleName(WebView view, String moduleName) {
-    ((RNCWebView) view).setMessagingModuleName(moduleName);
-  }
-
-  @ReactProp(name = "incognito")
-  public void setIncognito(WebView view, boolean enabled) {
-    // Remove all previous cookies
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      CookieManager.getInstance().removeAllCookies(null);
-    } else {
-      CookieManager.getInstance().removeAllCookie();
-    }
-
-    // Disable caching
-    view.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
-    view.getSettings().setAppCacheEnabled(!enabled);
-    view.clearHistory();
-    view.clearCache(enabled);
-
-    // No form data or autofill enabled
-    view.clearFormData();
-    view.getSettings().setSavePassword(!enabled);
-    view.getSettings().setSaveFormData(!enabled);
-  }
-
-  @ReactProp(name = "source")
-  public void setSource(WebView view, @Nullable ReadableMap source) {
-    if (source != null) {
-      if (source.hasKey("html")) {
-        String html = source.getString("html");
-        String baseUrl = source.hasKey("baseUrl") ? source.getString("baseUrl") : "";
-        view.loadDataWithBaseURL(baseUrl, html, HTML_MIME_TYPE, HTML_ENCODING, null);
-        return;
-      }
-      if (source.hasKey("uri")) {
-        String url = source.getString("uri");
-        String previousUrl = view.getUrl();
-        if (previousUrl != null && previousUrl.equals(url)) {
-          return;
-        }
-        if (source.hasKey("method")) {
-          String method = source.getString("method");
-          if (method.equalsIgnoreCase(HTTP_METHOD_POST)) {
-            byte[] postData = null;
-            if (source.hasKey("body")) {
-              String body = source.getString("body");
-              try {
-                postData = body.getBytes("UTF-8");
-              } catch (UnsupportedEncodingException e) {
-                postData = body.getBytes();
-              }
-            }
-            if (postData == null) {
-              postData = new byte[0];
-            }
-            view.postUrl(url, postData);
-            return;
-          }
-        }
-        HashMap<String, String> headerMap = new HashMap<>();
-        if (source.hasKey("headers")) {
-          ReadableMap headers = source.getMap("headers");
-          ReadableMapKeySetIterator iter = headers.keySetIterator();
-          while (iter.hasNextKey()) {
-            String key = iter.nextKey();
-            if ("user-agent".equals(key.toLowerCase(Locale.ENGLISH))) {
-              if (view.getSettings() != null) {
-                view.getSettings().setUserAgentString(headers.getString(key));
-              }
-            } else {
-              headerMap.put(key, headers.getString(key));
-            }
-          }
-        }
-        view.loadUrl(url, headerMap);
-        return;
-      }
-    }
-    view.loadUrl(BLANK_URL);
-  }
-
-  @ReactProp(name = "onContentSizeChange")
-  public void setOnContentSizeChange(WebView view, boolean sendContentSizeChangeEvents) {
-    ((RNCWebView) view).setSendContentSizeChangeEvents(sendContentSizeChangeEvents);
-  }
-
-  @ReactProp(name = "mixedContentMode")
-  public void setMixedContentMode(WebView view, @Nullable String mixedContentMode) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      if (mixedContentMode == null || "never".equals(mixedContentMode)) {
-        view.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-      } else if ("always".equals(mixedContentMode)) {
-        view.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-      } else if ("compatibility".equals(mixedContentMode)) {
-        view.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-      }
-    }
-  }
-
-  @ReactProp(name = "urlPrefixesForDefaultIntent")
-  public void setUrlPrefixesForDefaultIntent(
-    WebView view,
-    @Nullable ReadableArray urlPrefixesForDefaultIntent) {
-    RNCWebViewClient client = ((RNCWebView) view).getRNCWebViewClient();
-    if (client != null && urlPrefixesForDefaultIntent != null) {
-      client.setUrlPrefixesForDefaultIntent(urlPrefixesForDefaultIntent);
-    }
-  }
-
-  @ReactProp(name = "allowsFullscreenVideo")
-  public void setAllowsFullscreenVideo(
-    WebView view,
-    @Nullable Boolean allowsFullscreenVideo) {
-    mAllowsFullscreenVideo = allowsFullscreenVideo != null && allowsFullscreenVideo;
-    setupWebChromeClient((ReactContext)view.getContext(), view);
-  }
-
-  @ReactProp(name = "allowFileAccess")
-  public void setAllowFileAccess(
-    WebView view,
-    @Nullable Boolean allowFileAccess) {
-    view.getSettings().setAllowFileAccess(allowFileAccess != null && allowFileAccess);
-  }
-
-  @ReactProp(name = "geolocationEnabled")
-  public void setGeolocationEnabled(
-    WebView view,
-    @Nullable Boolean isGeolocationEnabled) {
-    view.getSettings().setGeolocationEnabled(isGeolocationEnabled != null && isGeolocationEnabled);
-  }
-
-  @ReactProp(name = "onScroll")
-  public void setOnScroll(WebView view, boolean hasScrollEvent) {
-    ((RNCWebView) view).setHasScrollEvent(hasScrollEvent);
-  }
-
-  @Override
-  protected void addEventEmitters(ThemedReactContext reactContext, WebView view) {
-    // Do not register default touch emitter and let WebView implementation handle touches
-    view.setWebViewClient(new RNCWebViewClient());
-  }
-
-  @Override
-  public Map getExportedCustomDirectEventTypeConstants() {
-    Map export = super.getExportedCustomDirectEventTypeConstants();
-    if (export == null) {
-      export = MapBuilder.newHashMap();
-    }
-    export.put(TopLoadingProgressEvent.EVENT_NAME, MapBuilder.of("registrationName", "onLoadingProgress"));
-    export.put(TopShouldStartLoadWithRequestEvent.EVENT_NAME, MapBuilder.of("registrationName", "onShouldStartLoadWithRequest"));
-    export.put(ScrollEventType.getJSEventName(ScrollEventType.SCROLL), MapBuilder.of("registrationName", "onScroll"));
-    export.put(TopHttpErrorEvent.EVENT_NAME, MapBuilder.of("registrationName", "onHttpError"));
-    return export;
-  }
-
-  @Override
-  public @Nullable
-  Map<String, Integer> getCommandsMap() {
-    return MapBuilder.<String, Integer>builder()
-      .put("goBack", COMMAND_GO_BACK)
-      .put("goForward", COMMAND_GO_FORWARD)
-      .put("reload", COMMAND_RELOAD)
-      .put("stopLoading", COMMAND_STOP_LOADING)
-      .put("postMessage", COMMAND_POST_MESSAGE)
-      .put("injectJavaScript", COMMAND_INJECT_JAVASCRIPT)
-      .put("loadUrl", COMMAND_LOAD_URL)
-      .put("requestFocus", COMMAND_FOCUS)
-      .put("clearFormData", COMMAND_CLEAR_FORM_DATA)
-      .put("clearCache", COMMAND_CLEAR_CACHE)
-      .put("clearHistory", COMMAND_CLEAR_HISTORY)
-      .build();
-  }
-
-  @Override
-  public void receiveCommand(WebView root, int commandId, @Nullable ReadableArray args) {
-    switch (commandId) {
-      case COMMAND_GO_BACK:
-        root.goBack();
-        break;
-      case COMMAND_GO_FORWARD:
-        root.goForward();
-        break;
-      case COMMAND_RELOAD:
-        root.reload();
-        break;
-      case COMMAND_STOP_LOADING:
-        root.stopLoading();
-        break;
-      case COMMAND_POST_MESSAGE:
-        try {
-          RNCWebView reactWebView = (RNCWebView) root;
-          JSONObject eventInitDict = new JSONObject();
-          eventInitDict.put("data", args.getString(0));
-          reactWebView.evaluateJavascriptWithFallback("(function () {" +
-            "var event;" +
-            "var data = " + eventInitDict.toString() + ";" +
-            "try {" +
-            "event = new MessageEvent('message', data);" +
-            "} catch (e) {" +
-            "event = document.createEvent('MessageEvent');" +
-            "event.initMessageEvent('message', true, true, data.data, data.origin, data.lastEventId, data.source);" +
-            "}" +
-            "document.dispatchEvent(event);" +
-            "})();");
-        } catch (JSONException e) {
-          throw new RuntimeException(e);
-        }
-        break;
-      case COMMAND_INJECT_JAVASCRIPT:
-        RNCWebView reactWebView = (RNCWebView) root;
-        reactWebView.evaluateJavascriptWithFallback(args.getString(0));
-        break;
-      case COMMAND_LOAD_URL:
-        if (args == null) {
-          throw new RuntimeException("Arguments for loading an url are null!");
-        }
-        ((RNCWebView) root).progressChangedFilter.setWaitingForCommandLoadUrl(false);
-        root.loadUrl(args.getString(0));
-        break;
-      case COMMAND_FOCUS:
-        root.requestFocus();
-        break;
-      case COMMAND_CLEAR_FORM_DATA:
-        root.clearFormData();
-        break;
-      case COMMAND_CLEAR_CACHE:
-        boolean includeDiskFiles = args != null && args.getBoolean(0);
-        root.clearCache(includeDiskFiles);
-        break;
-      case COMMAND_CLEAR_HISTORY:
-        root.clearHistory();
-        break;
-    }
-  }
-
-  @Override
-  public void onDropViewInstance(WebView webView) {
-    super.onDropViewInstance(webView);
-    ((ThemedReactContext) webView.getContext()).removeLifecycleEventListener((RNCWebView) webView);
-    ((RNCWebView) webView).cleanupCallbacksAndDestroy();
-  }
-
-  public static RNCWebViewModule getModule(ReactContext reactContext) {
-    return reactContext.getNativeModule(RNCWebViewModule.class);
-  }
-
-  protected void setupWebChromeClient(ReactContext reactContext, WebView webView) {
-    if (mAllowsFullscreenVideo) {
-      int initialRequestedOrientation = reactContext.getCurrentActivity().getRequestedOrientation();
-      mWebChromeClient = new RNCWebChromeClient(reactContext, webView) {
-        @Override
-        public Bitmap getDefaultVideoPoster() {
-          return Bitmap.createBitmap(50, 50, Bitmap.Config.ARGB_8888);
-        }
-
-        @Override
-        public void onShowCustomView(View view, CustomViewCallback callback) {
-          if (mVideoView != null) {
-            callback.onCustomViewHidden();
-            return;
-          }
-
-          mVideoView = view;
-          mCustomViewCallback = callback;
-
-          mReactContext.getCurrentActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            mVideoView.setSystemUiVisibility(FULLSCREEN_SYSTEM_UI_VISIBILITY);
-            mReactContext.getCurrentActivity().getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-          }
-
-          mVideoView.setBackgroundColor(Color.BLACK);
-          getRootView().addView(mVideoView, FULLSCREEN_LAYOUT_PARAMS);
-          mWebView.setVisibility(View.GONE);
-
-          mReactContext.addLifecycleEventListener(this);
-        }
-
-        @Override
-        public void onHideCustomView() {
-          if (mVideoView == null) {
-            return;
-          }
-
-          mVideoView.setVisibility(View.GONE);
-          getRootView().removeView(mVideoView);
-          mCustomViewCallback.onCustomViewHidden();
-
-          mVideoView = null;
-          mCustomViewCallback = null;
-
-          mWebView.setVisibility(View.VISIBLE);
-
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            mReactContext.getCurrentActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-          }
-          mReactContext.getCurrentActivity().setRequestedOrientation(initialRequestedOrientation);
-
-          mReactContext.removeLifecycleEventListener(this);
-        }
-      };
-      webView.setWebChromeClient(mWebChromeClient);
-    } else {
-      if (mWebChromeClient != null) {
-        mWebChromeClient.onHideCustomView();
-      }
-      mWebChromeClient = new RNCWebChromeClient(reactContext, webView) {
-        @Override
-        public Bitmap getDefaultVideoPoster() {
-          return Bitmap.createBitmap(50, 50, Bitmap.Config.ARGB_8888);
-        }
-      };
-      webView.setWebChromeClient(mWebChromeClient);
-    }
-  }
-
-  public static class InputStreamWithInjectedJS extends InputStream {
-    private InputStream pageIS;
-    private InputStream scriptIS;
-    private Charset charset;
-    private static final String REACT_CLASS = "InpStreamWithInjectedJS";
-    private static Map<Charset, String> script = new HashMap<>();
-    private int GREATER_THAN_SIGN = 62;
-    private int LESS_THAN_SIGN = 60;
-    private int SCRIPT_TAG_LENGTH = 7;
-
-    private boolean hasJS = false;
-    private boolean tagWasFound = false;
-    private int[] tag = new int[SCRIPT_TAG_LENGTH];
-    private boolean readFromTagVector = false;
-    private int tagVectorIdx = 0;
-    private int maxTagVectorIdx = SCRIPT_TAG_LENGTH;
-    private boolean scriptWasInjected = false;
-    private StringBuffer contentBuffer = new StringBuffer();
-
-    private static Charset getCharset(String charsetName) {
-        Charset cs = StandardCharsets.UTF_8;
-        try {
-            if (charsetName != null) {
-                cs = Charset.forName(charsetName);
-            }
-        } catch (UnsupportedCharsetException e) {
-            Log.d(REACT_CLASS, "wrong charset: " + charsetName);
-        }
-
-        return cs;
-    }
-
-    private static InputStream getScript(Charset charset) {
-        String js = script.get(charset);
-        if (js == null) {
-            String defaultJs = script.get(StandardCharsets.UTF_8);
-            js = new String(defaultJs.getBytes(StandardCharsets.UTF_8), charset);
-            script.put(charset, js);
-        }
-
-        return new ByteArrayInputStream(js.getBytes(charset));
-    }
-
-    InputStreamWithInjectedJS(InputStream is, String js, Charset charset) {
-        if (js == null) {
-            this.pageIS = is;
-        } else {
-            this.hasJS = true;
-            this.charset = charset;
-            Charset cs = StandardCharsets.UTF_8;
-            String jsScript = "<script>" + js + "</script>";
-            script.put(cs, jsScript);
-            this.pageIS = is;
-        }
-    }
 
     private int readScript() throws IOException {
         int nextByte = scriptIS.read();
@@ -1140,48 +778,48 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
 
     @Override
     public void onReceivedSslError(final WebView webView, final SslErrorHandler handler, final SslError error) {
-      handler.cancel();
+        handler.cancel();
 
-      int code = error.getPrimaryError();
-      String failingUrl = error.getUrl();
-      String description = "";
-      String descriptionPrefix = "SSL error: ";
- 
-      // https://developer.android.com/reference/android/net/http/SslError.html
-      switch (code) {
-        case SslError.SSL_DATE_INVALID:
-          description = "The date of the certificate is invalid";
-          break;
-        case SslError.SSL_EXPIRED:
-          description = "The certificate has expired";
-          break;
-        case SslError.SSL_IDMISMATCH:
-          description = "Hostname mismatch";
-          break;
-        case SslError.SSL_INVALID:
-          description = "A generic error occurred";
-          break;
-        case SslError.SSL_NOTYETVALID:
-          description = "The certificate is not yet valid";
-          break;
-        case SslError.SSL_UNTRUSTED:
-          description = "The certificate authority is not trusted";
-          break;
-        default: 
-          description = "Unknown SSL Error";
-          break;
-      }
- 
-       description = descriptionPrefix + description;
- 
-       this.onReceivedError(
-        webView,
-        code,
-        description,
-        failingUrl
-      );
+        int code = error.getPrimaryError();
+        String failingUrl = error.getUrl();
+        String description = "";
+        String descriptionPrefix = "SSL error: ";
+
+        // https://developer.android.com/reference/android/net/http/SslError.html
+        switch (code) {
+          case SslError.SSL_DATE_INVALID:
+            description = "The date of the certificate is invalid";
+            break;
+          case SslError.SSL_EXPIRED:
+            description = "The certificate has expired";
+            break;
+          case SslError.SSL_IDMISMATCH:
+            description = "Hostname mismatch";
+            break;
+          case SslError.SSL_INVALID:
+            description = "A generic error occurred";
+            break;
+          case SslError.SSL_NOTYETVALID:
+            description = "The certificate is not yet valid";
+            break;
+          case SslError.SSL_UNTRUSTED:
+            description = "The certificate authority is not trusted";
+            break;
+          default: 
+            description = "Unknown SSL Error";
+            break;
+        }
+        
+        description = descriptionPrefix + description;
+
+        this.onReceivedError(
+          webView,
+          code,
+          description,
+          failingUrl
+        );
     }
-
+    
     @Override
     public void onReceivedError(
       WebView webView,
@@ -1417,7 +1055,15 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
   protected static class RNCWebView extends WebView implements LifecycleEventListener {
     protected @Nullable
     String injectedJS;
-    protected @Nullable String injectedJSBeforeContentLoaded;
+    protected @Nullable
+    String injectedJSBeforeContentLoaded;
+
+    /**
+     * android.webkit.WebChromeClient fundamentally does not support JS injection into frames other
+     * than the main frame, so these two properties are mostly here just for parity with iOS & macOS.
+     */
+    protected boolean injectedJavaScriptForMainFrameOnly = true;
+    protected boolean injectedJavaScriptBeforeContentLoadedForMainFrameOnly = true;
     protected boolean messagingEnabled = false;
     protected @Nullable
     String messagingModuleName;
@@ -1513,7 +1159,15 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
     }
 
     public void setInjectedJavaScriptBeforeContentLoaded(@Nullable String js) {
-       injectedJSBeforeContentLoaded = js;
+      injectedJSBeforeContentLoaded = js;
+    }
+
+    public void setInjectedJavaScriptForMainFrameOnly(boolean enabled) {
+      injectedJavaScriptForMainFrameOnly = enabled;
+    }
+
+    public void setInjectedJavaScriptBeforeContentLoadedForMainFrameOnly(boolean enabled) {
+      injectedJavaScriptBeforeContentLoadedForMainFrameOnly = enabled;
     }
 
     protected RNCWebViewBridge createRNCWebViewBridge(RNCWebView webView) {
@@ -1568,6 +1222,14 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
         !TextUtils.isEmpty(injectedJS)) {
         evaluateJavascriptWithFallback("(function() {\n" + injectedJS + ";\n})();");
         //evaluateJavascriptWithFallback(injectedJS);
+      }
+    }
+
+    public void callInjectedJavaScriptBeforeContentLoaded() {
+      if (getSettings().getJavaScriptEnabled() &&
+      injectedJSBeforeContentLoaded != null &&
+      !TextUtils.isEmpty(injectedJSBeforeContentLoaded)) {
+        evaluateJavascriptWithFallback("(function() {\n" + injectedJSBeforeContentLoaded + ";\n})();");
       }
     }
 

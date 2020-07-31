@@ -26,6 +26,7 @@ import {
   WebViewMessageEvent,
   WebViewNavigationEvent,
   WebViewProgressEvent,
+  WebViewPermissionEvent,
   AndroidWebViewProps,
   NativeWebViewAndroid,
   State,
@@ -175,6 +176,14 @@ class WebView extends React.Component<AndroidWebViewProps, State> {
     );
   };
 
+  answerPermissionRequest = (allow: boolean, resources: string[]) => {
+    UIManager.dispatchViewManagerCommand(
+      this.getWebViewHandle(),
+      this.getCommands().answerPermissionRequest,
+      [allow, ...(resources || [])],
+    );
+  }
+
   /**
    * We return an event with a bunch of fields including:
    *  url, title, loading, canGoBack, canGoForward
@@ -251,6 +260,13 @@ class WebView extends React.Component<AndroidWebViewProps, State> {
       onMessage(event);
     }
   };
+
+  onPermissionRequest = (event: WebViewPermissionEvent) => {
+    const { onPermissionRequest } = this.props;
+    if (onPermissionRequest) {
+      onPermissionRequest(event);
+    }
+  }
 
   onLoadingProgress = (event: WebViewProgressEvent) => {
     const { onLoadProgress } = this.props;
@@ -345,6 +361,7 @@ class WebView extends React.Component<AndroidWebViewProps, State> {
         onLoadingError={this.onLoadingError}
         onLoadingFinish={this.onLoadingFinish}
         onLoadingProgress={this.onLoadingProgress}
+        onPermissionRequest={this.onPermissionRequest}
         onLoadingStart={this.onLoadingStart}
         onHttpError={this.onHttpError}
         onMessage={this.onMessage}

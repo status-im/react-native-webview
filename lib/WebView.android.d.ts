@@ -34,6 +34,7 @@ declare class WebView extends React.Component<AndroidWebViewProps, State> {
         clearHistory: number;
         clearCache: number;
         clearFormData: number;
+        answerPermissionRequest: number;
     };
     goForward: () => void;
     goBack: () => void;
@@ -51,6 +52,7 @@ declare class WebView extends React.Component<AndroidWebViewProps, State> {
      * functionality, look into postMessage/onMessage.
      */
     injectJavaScript: (data: string) => void;
+    answerPermissionRequest: (allow: boolean, resources: string[]) => void;
     /**
      * We return an event with a bunch of fields including:
      *  url, title, loading, canGoBack, canGoForward
@@ -65,6 +67,7 @@ declare class WebView extends React.Component<AndroidWebViewProps, State> {
     onHttpError: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewHttpError>) => void;
     onLoadingFinish: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNavigation>) => void;
     onMessage: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewMessage>) => void;
+    onPermissionRequest: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNativePermissionEvent>) => void;
     onLoadingProgress: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNativeProgressEvent>) => void;
     onShouldStartLoadWithRequestCallback: (shouldStart: boolean, url: string) => void;
     render(): JSX.Element;

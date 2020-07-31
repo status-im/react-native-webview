@@ -1,5 +1,5 @@
 import React from 'react';
-import { AndroidWebViewProps, NativeWebViewAndroid, State } from './WebViewTypes';
+import { WebViewErrorEvent, WebViewHttpErrorEvent, WebViewMessageEvent, WebViewNavigationEvent, WebViewProgressEvent, WebViewPermissionEvent, AndroidWebViewProps, NativeWebViewAndroid, State } from './WebViewTypes';
 /**
  * Renders a native WebView.
  */
@@ -34,6 +34,7 @@ declare class WebView extends React.Component<AndroidWebViewProps, State> {
         clearHistory: number;
         clearCache: number;
         clearFormData: number;
+        answerPermissionRequest: number;
     };
     goForward: () => void;
     goBack: () => void;
@@ -51,21 +52,23 @@ declare class WebView extends React.Component<AndroidWebViewProps, State> {
      * functionality, look into postMessage/onMessage.
      */
     injectJavaScript: (data: string) => void;
+    answerPermissionRequest: (allow: boolean, resources: string[]) => void;
     /**
      * We return an event with a bunch of fields including:
      *  url, title, loading, canGoBack, canGoForward
      */
-    updateNavigationState: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNavigation>) => void;
+    updateNavigationState: (event: WebViewNavigationEvent) => void;
     /**
      * Returns the native `WebView` node.
      */
     getWebViewHandle: () => number;
-    onLoadingStart: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNavigation>) => void;
-    onLoadingError: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewError>) => void;
-    onHttpError: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewHttpError>) => void;
-    onLoadingFinish: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNavigation>) => void;
-    onMessage: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewMessage>) => void;
-    onLoadingProgress: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNativeProgressEvent>) => void;
+    onLoadingStart: (event: WebViewNavigationEvent) => void;
+    onLoadingError: (event: WebViewErrorEvent) => void;
+    onHttpError: (event: WebViewHttpErrorEvent) => void;
+    onLoadingFinish: (event: WebViewNavigationEvent) => void;
+    onMessage: (event: WebViewMessageEvent) => void;
+    onPermissionRequest: (event: WebViewPermissionEvent) => void;
+    onLoadingProgress: (event: WebViewProgressEvent) => void;
     onShouldStartLoadWithRequestCallback: (shouldStart: boolean, url: string) => void;
     render(): JSX.Element;
 }

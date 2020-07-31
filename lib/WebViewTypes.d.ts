@@ -1,7 +1,7 @@
 import { ReactElement, Component } from 'react';
 import { NativeSyntheticEvent, ViewProps, StyleProp, ViewStyle, NativeMethodsMixin, Constructor, UIManagerStatic, NativeScrollEvent } from 'react-native';
 declare type WebViewCommands = 'goForward' | 'goBack' | 'reload' | 'stopLoading' | 'postMessage' | 'injectJavaScript' | 'loadUrl' | 'requestFocus';
-declare type AndroidWebViewCommands = 'clearHistory' | 'clearCache' | 'clearFormData';
+declare type AndroidWebViewCommands = 'clearHistory' | 'clearCache' | 'clearFormData' | 'answerPermissionRequest';
 interface RNCWebViewUIManager<Commands extends string> extends UIManagerStatic {
     getViewManagerConfig: (name: string) => {
         Commands: {
@@ -63,6 +63,9 @@ export interface WebViewNativeEvent {
 export interface WebViewNativeProgressEvent extends WebViewNativeEvent {
     progress: number;
 }
+export interface WebViewNativePermissionEvent extends WebViewNativeEvent {
+    resources: string[];
+}
 export interface WebViewNavigation extends WebViewNativeEvent {
     navigationType: 'click' | 'formsubmit' | 'backforward' | 'reload' | 'formresubmit' | 'other';
     mainDocumentURL?: string;
@@ -88,6 +91,7 @@ export interface WebViewHttpError extends WebViewNativeEvent {
 }
 export declare type WebViewEvent = NativeSyntheticEvent<WebViewNativeEvent>;
 export declare type WebViewProgressEvent = NativeSyntheticEvent<WebViewNativeProgressEvent>;
+export declare type WebViewPermissionEvent = NativeSyntheticEvent<WebViewNativePermissionEvent>;
 export declare type WebViewNavigationEvent = NativeSyntheticEvent<WebViewNavigation>;
 export declare type FileDownloadEvent = NativeSyntheticEvent<FileDownload>;
 export declare type WebViewMessageEvent = NativeSyntheticEvent<WebViewMessage>;
@@ -156,6 +160,9 @@ export interface CommonNativeWebViewProps extends ViewProps {
     incognito?: boolean;
     injectedJavaScript?: string;
     injectedJavaScriptBeforeContentLoaded?: string;
+    injectedJavaScriptForMainFrameOnly?: boolean;
+    injectedJavaScriptBeforeContentLoadedForMainFrameOnly?: boolean;
+    javaScriptCanOpenWindowsAutomatically?: boolean;
     mediaPlaybackRequiresUserAction?: boolean;
     messagingEnabled: boolean;
     onScroll?: (event: NativeScrollEvent) => void;
@@ -187,6 +194,7 @@ export interface AndroidNativeWebViewProps extends CommonNativeWebViewProps {
     javaScriptEnabled?: boolean;
     mixedContentMode?: 'never' | 'always' | 'compatibility';
     onContentSizeChange?: (event: WebViewEvent) => void;
+    onPermissionRequest?: (event: WebViewPermissionEvent) => void;
     overScrollMode?: OverScrollModeType;
     saveFormDataDisabled?: boolean;
     textZoom?: number;
@@ -552,6 +560,7 @@ export interface MacOSWebViewProps extends WebViewSharedProps {
 export interface AndroidWebViewProps extends WebViewSharedProps {
     onNavigationStateChange?: (event: WebViewNavigation) => void;
     onContentSizeChange?: (event: WebViewEvent) => void;
+    onPermissionRequest?: (event: WebViewPermissionEvent) => void;
     /**
      * https://developer.android.com/reference/android/webkit/WebSettings.html#setCacheMode(int)
      * Set the cacheMode. Possible values are:
@@ -675,6 +684,11 @@ export interface WebViewSharedProps extends ViewProps {
      */
     javaScriptEnabled?: boolean;
     /**
+     * A Boolean value indicating whether JavaScript can open windows without user interaction.
+     * The default value is `false`.
+     */
+    javaScriptCanOpenWindowsAutomatically?: boolean;
+    /**
      * Stylesheet object to set the style of the container view.
      */
     containerStyle?: StyleProp<ViewStyle>;
@@ -742,6 +756,16 @@ export interface WebViewSharedProps extends ViewProps {
      * once the webview is initialized but before the view loads any content.
      */
     injectedJavaScriptBeforeContentLoaded?: string;
+    /**
+     * If `true` (default; mandatory for Android), loads the `injectedJavaScript` only into the main frame.
+     * If `false` (only supported on iOS and macOS), loads it into all frames (e.g. iframes).
+     */
+    injectedJavaScriptForMainFrameOnly?: boolean;
+    /**
+     * If `true` (default; mandatory for Android), loads the `injectedJavaScriptBeforeContentLoaded` only into the main frame.
+     * If `false` (only supported on iOS and macOS), loads it into all frames (e.g. iframes).
+     */
+    injectedJavaScriptBeforeContentLoadedForMainFrameOnly?: boolean;
     /**
      * Boolean value that determines whether a horizontal scroll indicator is
      * shown in the `WebView`. The default value is `true`.

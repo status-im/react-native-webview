@@ -10,7 +10,7 @@
  * Licensed under the MIT License.
  */
 import React from 'react';
-import { NativeWebViewWindows, WebViewSharedProps, State } from './WebViewTypes';
+import { NativeWebViewWindows, WebViewSharedProps, WebViewProgressEvent, WebViewNavigationEvent, WebViewErrorEvent, WebViewHttpErrorEvent, WebViewMessageEvent, State } from './WebViewTypes';
 export default class WebView extends React.Component<WebViewSharedProps, State> {
     static defaultProps: {
         javaScriptEnabled: boolean;
@@ -21,18 +21,19 @@ export default class WebView extends React.Component<WebViewSharedProps, State> 
     goBack: () => void;
     reload: () => void;
     injectJavaScript: (data: string) => void;
+    postMessage: (data: string) => void;
     /**
      * We return an event with a bunch of fields including:
      *  url, title, loading, canGoBack, canGoForward
      */
-    updateNavigationState: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNavigation>) => void;
+    updateNavigationState: (event: WebViewNavigationEvent) => void;
     getWebViewHandle: () => number | null;
-    onLoadingStart: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNavigation>) => void;
-    onLoadingProgress: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNativeProgressEvent>) => void;
-    onLoadingError: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewError>) => void;
-    onLoadingFinish: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewNavigation>) => void;
-    onMessage: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewMessage>) => void;
-    onHttpError: (event: import("react-native").NativeSyntheticEvent<import("./WebViewTypes").WebViewHttpError>) => void;
+    onLoadingStart: (event: WebViewNavigationEvent) => void;
+    onLoadingProgress: (event: WebViewProgressEvent) => void;
+    onLoadingError: (event: WebViewErrorEvent) => void;
+    onLoadingFinish: (event: WebViewNavigationEvent) => void;
+    onMessage: (event: WebViewMessageEvent) => void;
+    onHttpError: (event: WebViewHttpErrorEvent) => void;
     render(): JSX.Element;
 }
 //# sourceMappingURL=WebView.windows.d.ts.map

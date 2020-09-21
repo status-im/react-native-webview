@@ -46,6 +46,7 @@ import android.view.ViewGroup.LayoutParams;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
+import android.webkit.CookieSyncManager;
 import android.webkit.DownloadListener;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
@@ -378,6 +379,16 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
       for (String hname: response.headers().names()) {
           Log.d(REACT_CLASS, "HEAD " + hname + " " + response.headers().get(hname));
           responseHeaders.put(hname, response.headers().get(hname));
+      }
+
+      //https://stackoverflow.com/questions/1652850/android-webview-cookie-problem
+      if (responseHeaders.containsKey("Set-Cookie")) {
+        CookieSyncManager cm = CookieSyncManager.createInstance(webView.getContext());
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.removeSessionCookie();
+        String cookieString = responseHeaders.get("Set-Cookie");
+        cookieManager.setCookie(request.getUrl().getHost(), cookieString);
+        CookieSyncManager.getInstance().sync();
       }
 
       return new WebResourceResponse("text/html", charset.name(), response.code(), "phrase", responseHeaders, is);

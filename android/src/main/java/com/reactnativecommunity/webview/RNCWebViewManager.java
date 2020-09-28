@@ -46,7 +46,9 @@ import android.view.ViewGroup.LayoutParams;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
+import java.net.CookieHandler;
 import android.webkit.CookieSyncManager;
+import okhttp3.JavaNetCookieJar;
 import android.webkit.DownloadListener;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
@@ -332,8 +334,9 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
           Request.Builder reqBuilder = new Request.Builder().url(urlStr);
           if (httpClient == null) {
             httpClient = new Builder()
-              .followRedirects(false)
-              .followSslRedirects(false)
+              .followRedirects(true)
+              .followSslRedirects(true)
+              .cookieJar(new JavaNetCookieJar(CookieHandler.getDefault()))
               .build();
           }
 
@@ -377,18 +380,8 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
       Log.d(REACT_CLASS, "inject our custom JS to this request");
       Map<String, String> responseHeaders = new HashMap<>();
       for (String hname: response.headers().names()) {
-          Log.d(REACT_CLASS, "HEAD " + hname + " " + response.headers().get(hname));
+          //Log.d(REACT_CLASS, "HEAD " + hname + " " + response.headers().get(hname));
           responseHeaders.put(hname, response.headers().get(hname));
-      }
-
-      //https://stackoverflow.com/questions/1652850/android-webview-cookie-problem
-      if (responseHeaders.containsKey("Set-Cookie")) {
-        CookieSyncManager cm = CookieSyncManager.createInstance(webView.getContext());
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.removeSessionCookie();
-        String cookieString = responseHeaders.get("Set-Cookie");
-        cookieManager.setCookie(request.getUrl().getHost(), cookieString);
-        CookieSyncManager.getInstance().sync();
       }
 
       return new WebResourceResponse("text/html", charset.name(), response.code(), "phrase", responseHeaders, is);
@@ -1131,9 +1124,15 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
 
 
     @Override
+    public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
+            return null;
+    }
+
+    @Override
     public WebResourceResponse shouldInterceptRequest(WebView webView, WebResourceRequest request) {
         Log.d(REACT_CLASS, "shouldInterceptRequest / WebViewClient");
         WebResourceResponse response = RNCWebViewManager.this.shouldInterceptRequest(request, true, (RNCWebView)webView);
+
         if (response != null) {
             Log.d(REACT_CLASS, "shouldInterceptRequest / WebViewClient -> return intercept response");
             return response;

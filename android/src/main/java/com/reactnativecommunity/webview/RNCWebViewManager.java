@@ -334,8 +334,8 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
           Request.Builder reqBuilder = new Request.Builder().url(urlStr);
           if (httpClient == null) {
             httpClient = new Builder()
-              .followRedirects(true)
-              .followSslRedirects(true)
+              .followRedirects(false)
+              .followSslRedirects(false)
               .cookieJar(new JavaNetCookieJar(CookieHandler.getDefault()))
               .build();
           }

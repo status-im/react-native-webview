@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 
+import Permission from './examples/Permission';
 import Alerts from './examples/Alerts';
 import Scrolling from './examples/Scrolling';
 import Background from './examples/Background';
@@ -21,12 +22,12 @@ import Messaging from './examples/Messaging';
 import NativeWebpage from './examples/NativeWebpage';
 
 const TESTS = {
-  Messaging: {
-    title: 'Messaging',
-    testId: 'messaging',
-    description: 'js-webview postMessage messaging test',
+  Permission: {
+    title: 'Permission',
+    testId: 'permission',
+    description: 'Permission tests',
     render() {
-      return <Messaging />;
+      return <Permission />;
     },
   },
   Alerts: {
@@ -131,6 +132,11 @@ export default class App extends Component<Props, State> {
         </TouchableOpacity>
 
         <View style={styles.testPickerContainer}>
+          <Button
+            testID="testType_permission"
+            title="Permission"
+            onPress={() => this._changeTest('Permission')}
+          />
           <Button
             testID="testType_alerts"
             title="Alerts"
